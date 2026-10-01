@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="390" viewBox="0 0 760 390" role="img" aria-labelledby="title desc">
+  <title id="title">Observed file search benchmark timings</title>
+  <desc id="desc">One run over five Java files: 1 thread took 10 milliseconds, 2 threads took 2 milliseconds, 4 threads took 1 millisecond, and 8 threads took 2 milliseconds. These tiny measurements are illustrative only.</desc>
+  <rect width="760" height="390" rx="18" fill="#0b1220"/>
+  <text x="42" y="48" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">Observed search time by thread count</text>
+  <text x="42" y="74" fill="#94a3b8" font-family="Segoe UI, Arial, sans-serif" font-size="13">One local run · 5 Java files · 10 occurrences per run</text>
+  <g stroke="#263449" stroke-width="1">
+    <line x1="190" y1="105" x2="190" y2="305"/><line x1="290" y1="105" x2="290" y2="305"/>
+    <line x1="390" y1="105" x2="390" y2="305"/><line x1="490" y1="105" x2="490" y2="305"/>
+    <line x1="590" y1="105" x2="590" y2="305"/>
+  </g>
+  <g fill="#94a3b8" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">
+    <text x="190" y="326">0</text><text x="290" y="326">2.5</text><text x="390" y="326">5</text><text x="490" y="326">7.5</text><text x="590" y="326">10 ms</text>
+  </g>
+  <g fill="#cbd5e1" font-family="Segoe UI, Arial, sans-serif" font-size="14" text-anchor="end">
+    <text x="165" y="145">1 thread</text><text x="165" y="193">2 threads</text><text x="165" y="241">4 threads</text><text x="165" y="289">8 threads</text>
+  </g>
+  <g>
+    <rect x="190" y="124" width="400" height="27" rx="6" fill="#38bdf8"/><text x="602" y="143" fill="#e0f2fe" font-family="Segoe UI, Arial, sans-serif" font-size="13">10 ms</text>
+    <rect x="190" y="172" width="80" height="27" rx="6" fill="#38bdf8"/><text x="282" y="191" fill="#e0f2fe" font-family="Segoe UI, Arial, sans-serif" font-size="13">2 ms</text>
+    <rect x="190" y="220" width="40" height="27" rx="6" fill="#38bdf8"/><text x="242" y="239" fill="#e0f2fe" font-family="Segoe UI, Arial, sans-serif" font-size="13">1 ms</text>
+    <rect x="190" y="268" width="80" height="27" rx="6" fill="#38bdf8"/><text x="282" y="287" fill="#e0f2fe" font-family="Segoe UI, Arial, sans-serif" font-size="13">2 ms</text>
+  </g>
+  <text x="42" y="363" fill="#fbbf24" font-family="Segoe UI, Arial, sans-serif" font-size="13">Illustrative only: workload is too small for reliable performance conclusions.</text>
+</svg>
