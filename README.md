@@ -7,8 +7,11 @@ From the project directory:
 ```powershell
 mvn test
 mvn compile exec:java "-Dexec.args=src SearchEngine --extensions java --threads 4"
+mvn javafx:run
 ```
-The first command runs the automated tests. The second searches Java files under `src` for the literal text `SearchEngine` using four workers.
+The first command runs the automated tests. The second searches Java files under `src` for the literal text `SearchEngine` using four workers. The third opens the JavaFX desktop app.
+
+The GUI lets you choose a directory, query, extensions, excluded folders, case handling, regex mode, and worker count. It shows matching files and line previews, and stores search history in the selected SQLite database. Searches run on a background worker so the window remains responsive.
 ```powershell
 # Ignore letter case
 mvn exec:java "-Dexec.args=src searchengine --ignore-case --extensions java"
@@ -100,11 +103,17 @@ The `--csv` option writes `threads,time_seconds,files_scanned,files_matched,occu
 | `--database path.db` | Persist each search run, matching file, and matching line in SQLite. |
 | `history path.db --limit N` | Show the latest saved searches; defaults to 10. |
 
+## Desktop interface
+
+The JavaFX app is a separate entry point from the CLI. Both interfaces use the same `SearchEngine` and SQLite repository, so they share search behavior and saved history. The app uses JavaFX controls with a small CSS theme; Maven downloads the JavaFX modules for the current platform.
+
 ## Project map
 ```text
 src/main/java/search/       CLI, configuration, search engine, result model
 src/main/java/search/db/    SQLite connection manager, history repository, history model
+src/main/java/search/ui/    JavaFX desktop interface
 src/test/java/search/       Search behavior tests
 src/test/java/search/db/    SQLite persistence tests
+src/main/resources/search/ui/  Desktop theme
 docs/benchmark.svg          Benchmark chart shown above
 ```
