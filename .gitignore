@@ -1,3 +1,6 @@
 target/
 work/
 benchmark-results/*.csv
+*.db
+*.db-shm
+*.db-wal
