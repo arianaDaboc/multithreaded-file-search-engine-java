@@ -122,6 +122,7 @@
     -fx-padding: 2px;
     -fx-fixed-cell-size: 38px;
 }
+.list-view { -fx-fixed-cell-size: -1px; }
 .table-view .column-header-background { -fx-background-color: #f1f2ec; -fx-background-radius: 2px 2px 0 0; }
 .table-view .column-header, .table-view .filler { -fx-background-color: transparent; -fx-size: 31px; }
 .table-view .column-header .label { -fx-text-fill: #758077; -fx-font-size: 9px; -fx-font-weight: 700; }
@@ -130,5 +131,14 @@
 .list-cell { -fx-background-color: #fffefa; -fx-text-fill: #4c584f; -fx-padding: 9px; -fx-border-color: transparent transparent #ecece5 transparent; }
 .list-cell:filled { -fx-wrap-text: true; }
 .list-cell:empty { -fx-border-color: transparent; }
+.match-location { -fx-text-fill: #6f7b70; -fx-font-size: 9px; -fx-font-weight: 700; -fx-letter-spacing: 0.4px; }
+.match-source-line {
+    -fx-background-color: #f4f5ef;
+    -fx-background-radius: 3px;
+    -fx-padding: 7px 8px;
+    -fx-text-fill: #29332d;
+    -fx-font-family: "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 11px;
+}
 .scroll-bar:vertical .thumb { -fx-background-color: #c7cec5; -fx-background-radius: 3px; }
 .page > .label:last-child { -fx-padding: 0 0 0 2px; }

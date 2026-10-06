@@ -9,7 +9,6 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressIndicator;
@@ -18,6 +17,7 @@ import javafx.scene.control.Spinner;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -227,12 +227,18 @@ public final class SearchDesktopApp extends Application {
         VBox lineCard = new VBox(12, sectionHeading("Matching lines", "Line number and surrounding text."), buildLineList());
         fileCard.getStyleClass().add("card");
         lineCard.getStyleClass().add("card");
+        fileCard.setMinWidth(0);
+        lineCard.setMinWidth(0);
         fileCard.setPrefWidth(620);
         HBox.setHgrow(fileCard, Priority.ALWAYS);
         HBox.setHgrow(lineCard, Priority.ALWAYS);
+        HBox.setHgrow(resultsTable, Priority.ALWAYS);
+        HBox.setHgrow(lineList, Priority.ALWAYS);
         VBox.setVgrow(resultsTable, Priority.ALWAYS);
         VBox.setVgrow(lineList, Priority.ALWAYS);
         area.getChildren().addAll(fileCard, lineCard);
+        area.setMinHeight(300);
+        area.setPrefHeight(360);
         return area;
     }
 
@@ -251,11 +257,26 @@ public final class SearchDesktopApp extends Application {
 
     private ListView<SearchResult.LineMatch> buildLineList() {
         lineList.setPlaceholder(new Label("Choose a matching file."));
+        lineList.setFixedCellSize(-1);
         lineList.setCellFactory(list -> new ListCell<>() {
             @Override protected void updateItem(SearchResult.LineMatch item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setGraphic(null); }
-                else setText("Line " + item.lineNumber() + "  ·  " + item.occurrences() + " match(es)\n" + item.text());
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    Label location = new Label("LINE " + item.lineNumber() + "  ·  " + item.occurrences()
+                            + (item.occurrences() == 1 ? " match" : " matches"));
+                    location.getStyleClass().add("match-location");
+                    Label sourceLine = new Label(item.text());
+                    sourceLine.getStyleClass().add("match-source-line");
+                    sourceLine.setWrapText(true);
+                    sourceLine.maxWidthProperty().bind(lineList.widthProperty().subtract(48));
+                    VBox content = new VBox(5, location, sourceLine);
+                    content.setFillWidth(true);
+                    setText(null);
+                    setGraphic(content);
+                }
             }
         });
         return lineList;
