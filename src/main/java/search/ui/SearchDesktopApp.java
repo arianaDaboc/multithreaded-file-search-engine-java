@@ -3,7 +3,6 @@ package search.ui;
 import javafx.application.Application;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.concurrent.Task;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -11,8 +10,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.control.ProgressIndicator;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -21,9 +18,10 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import search.SearchConfig;
@@ -79,7 +77,6 @@ public final class SearchDesktopApp extends Application {
         this.stage = stage;
         BorderPane app = new BorderPane();
         app.getStyleClass().add("app-root");
-        app.setLeft(buildSidebar());
         app.setTop(buildTopBar());
         pageHost.getStyleClass().add("page-host");
         app.setCenter(pageHost);
@@ -94,35 +91,31 @@ public final class SearchDesktopApp extends Application {
         stage.show();
     }
 
-    private Node buildSidebar() {
-        VBox sidebar = new VBox(22);
-        sidebar.getStyleClass().add("sidebar");
-        sidebar.setPrefWidth(226);
-
-        HBox brand = new HBox(10, new Label("N"), new VBox(2, new Label("NEEDLE"), mutedLabel("LOCAL FILE SEARCH")));
+    private Node buildTopBar() {
+        Circle lens = new Circle(7);
+        lens.getStyleClass().add("brand-lens");
+        Line handle = new Line(5, 5, 14, 14);
+        handle.getStyleClass().add("brand-handle");
+        StackPane mark = new StackPane(lens, handle);
+        mark.getStyleClass().add("brand-symbol");
+        HBox brand = new HBox(10, mark, new VBox(1, new Label("needle"), new Label("LOCAL FILE SEARCH")));
         brand.getStyleClass().add("brand");
-        brand.getChildren().get(0).getStyleClass().add("brand-mark");
-        sidebar.getChildren().addAll(brand, mutedLabel("TOOLS"));
+        brand.getChildren().get(1).getStyleClass().add("brand-copy");
 
         searchNav.getStyleClass().add("nav-button");
         historyNav.getStyleClass().add("nav-button");
-        searchNav.setMaxWidth(Double.MAX_VALUE);
-        historyNav.setMaxWidth(Double.MAX_VALUE);
         searchNav.setOnAction(event -> showSearchPage());
         historyNav.setOnAction(event -> showHistoryPage());
-        sidebar.getChildren().addAll(searchNav, historyNav);
+        HBox navigation = new HBox(5, searchNav, historyNav);
+        navigation.getStyleClass().add("top-navigation");
 
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-        VBox localNote = new VBox(7, new Label("LOCAL DATA"), mutedLabel("Search runs on this machine."), mutedLabel("History: SQLite"));
-        localNote.getStyleClass().add("sidebar-note");
-        sidebar.getChildren().addAll(spacer, localNote);
-        return sidebar;
-    }
-
-    private Node buildTopBar() {
-        HBox top = new HBox(new Label("LOCAL WORKSPACE"));
-        top.setAlignment(Pos.CENTER_RIGHT);
+        Label localStatus = new Label("ON THIS DEVICE");
+        localStatus.getStyleClass().add("local-status");
+        HBox right = new HBox(24, navigation, localStatus);
+        right.setAlignment(Pos.CENTER_RIGHT);
+        HBox top = new HBox(brand, right);
+        HBox.setHgrow(brand, Priority.ALWAYS);
+        top.setAlignment(Pos.CENTER_LEFT);
         top.getStyleClass().add("top-bar");
         return top;
     }
@@ -353,23 +346,21 @@ public final class SearchDesktopApp extends Application {
         return label;
     }
 
-    private Label mutedLabel(String text) {
-        Label label = new Label(text);
-        label.getStyleClass().add("muted-text");
-        return label;
-    }
-
     private void showSearchPage() {
         pageHost.getChildren().setAll(buildSearchPage());
-        searchNav.getStyleClass().add("active");
-        historyNav.getStyleClass().remove("active");
+        setActiveNavigation(searchNav);
     }
 
     private void showHistoryPage() {
         pageHost.getChildren().setAll(buildHistoryPage());
-        historyNav.getStyleClass().add("active");
-        searchNav.getStyleClass().remove("active");
+        setActiveNavigation(historyNav);
         loadHistory();
+    }
+
+    private void setActiveNavigation(Button active) {
+        searchNav.getStyleClass().remove("active");
+        historyNav.getStyleClass().remove("active");
+        if (!active.getStyleClass().contains("active")) active.getStyleClass().add("active");
     }
 
     private void startSearch() {
