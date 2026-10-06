@@ -237,8 +237,10 @@ public final class SearchDesktopApp extends Application {
         VBox.setVgrow(resultsTable, Priority.ALWAYS);
         VBox.setVgrow(lineList, Priority.ALWAYS);
         area.getChildren().addAll(fileCard, lineCard);
-        area.setMinHeight(300);
-        area.setPrefHeight(360);
+        // Keep both result panes visible at typical laptop window heights.
+        // Their tables/lists provide scrolling when the result set is longer.
+        area.setMinHeight(150);
+        area.setPrefHeight(220);
         return area;
     }
 
