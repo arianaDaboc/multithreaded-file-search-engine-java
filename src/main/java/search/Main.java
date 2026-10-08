@@ -47,19 +47,48 @@ public final class Main {
         if (benchmark != null) {
             System.out.println("Benchmark (results below are from the final run):");
             SearchEngine.SearchReport last = null;
-            StringBuilder csvRows = new StringBuilder("threads,time_seconds,files_scanned,files_matched,occurrences\n");
+            int lastWorkers = benchmark.get(0);
+            StringBuilder csvRows = new StringBuilder("threads,time_seconds,files_scanned,files_matched,occurrences,lines_scanned,bytes_scanned,files_per_second,avg_file_time_seconds,error_count,cancelled\n");
             for (int workers : benchmark) {
-                last = engine.search(workers);
-                System.out.printf("%2d threads: %.3f s | %d files scanned | %d occurrences%n", workers, last.elapsedSeconds(), last.filesScanned(), last.occurrences());
-                saveToDatabase(historyRepository, config, last, workers);
-                csvRows.append(workers).append(',').append(String.format(java.util.Locale.ROOT, "%.6f", last.elapsedSeconds())).append(',').append(last.filesScanned()).append(',').append(last.results().size()).append(',').append(last.occurrences()).append('\n');
+                lastWorkers = workers;
+                last = runWithShutdownCancellation(engine, workers);
+                System.out.printf(java.util.Locale.ROOT, "%2d threads: %.3f s | %d files scanned | %d occurrences%n", workers, last.elapsedSeconds(), last.filesScanned(), last.occurrences());
+                if (!last.cancelled()) saveToDatabase(historyRepository, config, last, workers);
+                csvRows.append(workers).append(',')
+                        .append(String.format(java.util.Locale.ROOT, "%.6f", last.elapsedSeconds())).append(',')
+                        .append(last.filesScanned()).append(',').append(last.results().size()).append(',')
+                        .append(last.occurrences()).append(',').append(last.linesScanned()).append(',')
+                        .append(last.bytesScanned()).append(',')
+                        .append(String.format(java.util.Locale.ROOT, "%.3f", last.filesPerSecond())).append(',')
+                        .append(String.format(java.util.Locale.ROOT, "%.6f", last.averageFileSeconds())).append(',')
+                        .append(last.errorCount()).append(',').append(last.cancelled()).append('\n');
+                if (last.cancelled()) break;
             }
             if (csv != null) { Path parent = csv.toAbsolutePath().getParent(); if (parent != null) Files.createDirectories(parent); Files.writeString(csv, csvRows, StandardCharsets.UTF_8); System.out.println("CSV saved: " + csv.toAbsolutePath()); }
-            if (last != null) printResults(config, last, benchmark.get(benchmark.size() - 1));
+            if (last != null) printResults(config, last, lastWorkers);
         } else {
-            SearchEngine.SearchReport report = engine.search(threads);
+            SearchEngine.SearchReport report = runWithShutdownCancellation(engine, threads);
             printResults(config, report, threads);
-            saveToDatabase(historyRepository, config, report, threads);
+            if (!report.cancelled()) saveToDatabase(historyRepository, config, report, threads);
+        }
+    }
+
+    private static SearchEngine.SearchReport runWithShutdownCancellation(SearchEngine engine, int threads)
+            throws Exception {
+        SearchControl control = new SearchControl();
+        Thread coordinator = Thread.currentThread();
+        Thread shutdownHook = new Thread(() -> {
+            System.out.println("\nCancellation requested; stopping file search…");
+            control.cancel();
+            try { coordinator.join(5_000); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        }, "search-cancellation-shutdown-hook");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+        try {
+            return engine.search(threads, control);
+        } finally {
+            try { Runtime.getRuntime().removeShutdownHook(shutdownHook); }
+            catch (IllegalStateException ignored) { /* JVM shutdown is already running. */ }
         }
     }
 
@@ -86,11 +115,14 @@ public final class Main {
             return;
         }
         System.out.println("Recent searches:");
-        System.out.printf("%-5s %-19s %-24s %7s %8s %8s %12s %10s%n", "ID", "Created at", "Query", "Threads", "Scanned", "Matched", "Occurrences", "Time (s)");
+        System.out.printf("%-5s %-19s %-20s %7s %8s %8s %10s %8s %10s %8s %10s %12s %10s%n",
+                "ID", "Created at", "Query", "Threads", "Scanned", "Matched", "Occurrences",
+                "Lines", "Bytes", "Errors", "Time (s)", "Files/s", "Avg/file ms");
         for (SearchRunSummary run : runs) {
-            System.out.printf("%-5d %-19s %-24s %7d %8d %8d %12d %10.3f%n",
+            System.out.printf(java.util.Locale.ROOT, "%-5d %-19s %-20s %7d %8d %8d %10d %8d %10s %8d %10.3f %12.2f %10.3f%n",
                     run.id(), run.createdAt(), truncate(run.query(), 24), run.threads(), run.filesScanned(),
-                    run.filesMatched(), run.occurrences(), run.elapsedSeconds());
+                    run.filesMatched(), run.occurrences(), run.linesScanned(), formatBytes(run.bytesScanned()),
+                    run.errorCount(), run.elapsedSeconds(), run.filesPerSecond(), run.averageFileSeconds() * 1_000);
         }
     }
 
@@ -104,13 +136,29 @@ public final class Main {
     }
 
     private static void printResults(SearchConfig config, SearchEngine.SearchReport report, int threads) {
-        System.out.printf("%nDirectory: %s%nQuery: %s (%s)%nFiles scanned: %d%nFiles matched: %d%nOccurrences: %d%nTime: %.3f s%nThreads: %d%n",
-                config.root(), config.query(), config.caseSensitive() ? "case-sensitive" : "case-insensitive", report.filesScanned(), report.results().size(), report.occurrences(), report.elapsedSeconds(), threads);
+        System.out.printf(java.util.Locale.ROOT, "%nDirectory: %s%nQuery: %s (%s)%nFiles scanned: %d%nFiles matched: %d%nOccurrences: %d%nLines scanned: %d%nBytes scanned: %s%nTime: %.3f s%nFiles/second: %.2f%nAverage file processing: %.3f ms%nErrors: %d%nThreads: %d%n",
+                config.root(), config.query(), config.caseSensitive() ? "case-sensitive" : "case-insensitive",
+                report.filesScanned(), report.results().size(), report.occurrences(), report.linesScanned(),
+                formatBytes(report.bytesScanned()), report.elapsedSeconds(), report.filesPerSecond(),
+                report.averageFileSeconds() * 1_000, report.errorCount(), threads);
+        if (report.cancelled()) System.out.println("Search cancelled; showing completed results.");
         for (SearchResult result : report.results()) {
             System.out.println("\n" + config.root().relativize(result.file()) + " (" + result.occurrences() + " occurrences)");
             for (SearchResult.LineMatch match : result.matches()) System.out.printf("  line %d (%d): %s%n", match.lineNumber(), match.occurrences(), match.text());
         }
-        if (!report.errors().isEmpty()) { System.out.println("\nUnreadable files: " + report.errors().size()); report.errors().forEach(System.err::println); }
+        for (SearchError error : report.errors()) {
+            Path displayPath = error.file().startsWith(config.root())
+                    ? config.root().relativize(error.file()) : error.file();
+            System.err.printf("%nWARNING: Could not read file:%n%s%nReason: %s%nContinuing search...%n",
+                    displayPath, error.reason());
+        }
+    }
+
+    private static String formatBytes(long bytes) {
+        if (bytes < 1_000) return bytes + " B";
+        if (bytes < 1_000_000) return String.format(java.util.Locale.ROOT, "%.2f kB", bytes / 1_000.0);
+        if (bytes < 1_000_000_000) return String.format(java.util.Locale.ROOT, "%.2f MB", bytes / 1_000_000.0);
+        return String.format(java.util.Locale.ROOT, "%.2f GB", bytes / 1_000_000_000.0);
     }
 
     private static void usage() {

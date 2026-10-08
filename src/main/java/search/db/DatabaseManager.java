@@ -54,6 +54,27 @@ public final class DatabaseManager {
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_search_runs_created_at ON search_runs(created_at DESC)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_matched_files_run_id ON matched_files(search_run_id)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_line_matches_file_id ON line_matches(matched_file_id)");
+            ensureColumn(connection, "lines_scanned", "INTEGER NOT NULL DEFAULT 0");
+            ensureColumn(connection, "bytes_scanned", "INTEGER NOT NULL DEFAULT 0");
+            ensureColumn(connection, "file_processing_nanos", "INTEGER NOT NULL DEFAULT 0");
+            ensureColumn(connection, "error_count", "INTEGER NOT NULL DEFAULT 0");
+        }
+    }
+
+    private void ensureColumn(Connection connection, String columnName, String definition) throws SQLException {
+        boolean exists = false;
+        try (Statement statement = connection.createStatement(); var columns = statement.executeQuery("PRAGMA table_info(search_runs)")) {
+            while (columns.next()) {
+                if (columnName.equalsIgnoreCase(columns.getString("name"))) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (!exists) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("ALTER TABLE search_runs ADD COLUMN " + columnName + " " + definition);
+            }
         }
     }
 

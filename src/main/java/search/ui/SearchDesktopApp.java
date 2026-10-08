@@ -1,6 +1,7 @@
 package search.ui;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.concurrent.Task;
 import javafx.geometry.Pos;
@@ -25,6 +26,7 @@ import javafx.scene.shape.Line;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import search.SearchConfig;
+import search.SearchControl;
 import search.SearchEngine;
 import search.SearchResult;
 import search.db.DatabaseManager;
@@ -36,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -57,12 +60,14 @@ public final class SearchDesktopApp extends Application {
     private final CheckBox saveHistoryBox = new CheckBox("Save search history");
     private final Spinner<Integer> threadSpinner = new Spinner<>(1, 128, Math.max(1, Runtime.getRuntime().availableProcessors()));
     private final Button searchButton = new Button("Search files");
+    private final Button cancelButton = new Button("Cancel search");
     private final Label statusLabel = new Label("Ready when you are.");
     private final Label historyStatusLabel = new Label("History is stored locally in SQLite.");
     private final Label filesValue = new Label("—");
     private final Label matchedValue = new Label("—");
     private final Label occurrencesValue = new Label("—");
     private final Label timeValue = new Label("—");
+    private final Label scanDetailsLabel = new Label("Lines, bytes, throughput and file timing will appear after a search.");
     private final TableView<SearchResult> resultsTable = new TableView<>();
     private final ListView<SearchResult.LineMatch> lineList = new ListView<>();
     private final TableView<SearchRunSummary> historyTable = new TableView<>();
@@ -72,6 +77,7 @@ public final class SearchDesktopApp extends Application {
     private Stage stage;
     private SearchEngine.SearchReport latestReport;
     private SearchConfig latestConfig;
+    private SearchControl activeSearchControl;
 
     @Override public void start(Stage stage) {
         this.stage = stage;
@@ -127,9 +133,11 @@ public final class SearchDesktopApp extends Application {
                 pageHeading("Search files", "Find text in a folder and review matching lines."),
                 buildSearchCard(),
                 buildMetrics(),
+                scanDetailsLabel,
                 buildResultsArea(),
                 statusLabel);
-        VBox.setVgrow(page.getChildren().get(3), Priority.ALWAYS);
+        scanDetailsLabel.getStyleClass().add("scan-details");
+        VBox.setVgrow(page.getChildren().get(4), Priority.ALWAYS);
         return page;
     }
 
@@ -141,13 +149,19 @@ public final class SearchDesktopApp extends Application {
         HBox directoryRow = new HBox(10, fieldBlock("DIRECTORY", directoryField), browseButton());
         directoryRow.setAlignment(Pos.BOTTOM_LEFT);
         HBox.setHgrow(directoryRow.getChildren().get(0), Priority.ALWAYS);
-        HBox queryRow = new HBox(10, fieldBlock("QUERY", queryField), searchButton);
+        HBox searchActions = new HBox(7, searchButton, cancelButton);
+        searchActions.setAlignment(Pos.BOTTOM_LEFT);
+        HBox queryRow = new HBox(10, fieldBlock("QUERY", queryField), searchActions);
         queryRow.setAlignment(Pos.BOTTOM_LEFT);
         HBox.setHgrow(queryRow.getChildren().get(0), Priority.ALWAYS);
 
         searchButton.getStyleClass().add("primary-button");
         searchButton.setPrefWidth(150);
         searchButton.setOnAction(event -> startSearch());
+        cancelButton.getStyleClass().add("cancel-button");
+        cancelButton.setPrefWidth(132);
+        cancelButton.setDisable(true);
+        cancelButton.setOnAction(event -> cancelSearch());
         queryField.setOnAction(event -> startSearch());
 
         threadSpinner.setEditable(true);
@@ -300,12 +314,17 @@ public final class SearchDesktopApp extends Application {
     private TableView<SearchRunSummary> buildHistoryTable() {
         addHistoryColumn("ID", 55, run -> Long.toString(run.id()));
         addHistoryColumn("CREATED", 160, SearchRunSummary::createdAt);
-        addHistoryColumn("QUERY", 200, SearchRunSummary::query);
-        addHistoryNumberColumn("THREADS", 80, run -> run.threads());
-        addHistoryNumberColumn("SCANNED", 85, run -> run.filesScanned());
-        addHistoryNumberColumn("MATCHED", 85, run -> run.filesMatched());
-        addHistoryNumberColumn("OCCURRENCES", 110, run -> run.occurrences());
-        addHistoryColumn("TIME", 85, run -> String.format(java.util.Locale.ROOT, "%.3f s", run.elapsedSeconds()));
+        addHistoryColumn("QUERY", 170, SearchRunSummary::query);
+        addHistoryNumberColumn("THREADS", 70, run -> run.threads());
+        addHistoryNumberColumn("SCANNED", 70, run -> run.filesScanned());
+        addHistoryNumberColumn("MATCHED", 70, run -> run.filesMatched());
+        addHistoryNumberColumn("OCCURRENCES", 100, run -> run.occurrences());
+        addHistoryNumberColumn("LINES", 70, run -> run.linesScanned());
+        addHistoryColumn("BYTES", 80, run -> formatBytes(run.bytesScanned()));
+        addHistoryColumn("FILES/S", 80, run -> String.format(java.util.Locale.ROOT, "%.1f", run.filesPerSecond()));
+        addHistoryColumn("AVG/FILE", 90, run -> String.format(java.util.Locale.ROOT, "%.3f ms", run.averageFileSeconds() * 1_000));
+        addHistoryNumberColumn("ERRORS", 65, run -> run.errorCount());
+        addHistoryColumn("TIME", 80, run -> String.format(java.util.Locale.ROOT, "%.3f s", run.elapsedSeconds()));
         historyTable.setPlaceholder(new Label("No saved searches yet. Run a search with history enabled."));
         return historyTable;
     }
@@ -382,14 +401,23 @@ public final class SearchDesktopApp extends Application {
         int workers = threadSpinner.getValue();
         boolean persist = saveHistoryBox.isSelected();
         Path databasePath = Path.of(databaseField.getText().isBlank() ? "search-history.db" : databaseField.getText().trim());
+        AtomicReference<SearchControl> controlRef = new AtomicReference<>();
+        SearchControl control = new SearchControl(progress -> Platform.runLater(() -> {
+            if (activeSearchControl == controlRef.get()) {
+                statusLabel.setText("Scanning files… " + progress.filesScanned() + " / " + progress.filesDiscovered());
+            }
+        }));
+        controlRef.set(control);
+        activeSearchControl = control;
         searchButton.setDisable(true);
         searchButton.setText("Searching…");
+        cancelButton.setDisable(false);
         statusLabel.setText("Scanning files with " + workers + " worker thread(s)…");
         Task<SearchOutcome> task = new Task<>() {
             @Override protected SearchOutcome call() throws Exception {
-                SearchEngine.SearchReport report = new SearchEngine(config).search(workers);
+                SearchEngine.SearchReport report = new SearchEngine(config).search(workers, control);
                 long runId = -1;
-                if (persist) runId = new SearchHistoryRepository(new DatabaseManager(databasePath)).save(config, report, workers);
+                if (persist && !report.cancelled()) runId = new SearchHistoryRepository(new DatabaseManager(databasePath)).save(config, report, workers);
                 return new SearchOutcome(report, runId);
             }
         };
@@ -397,18 +425,41 @@ public final class SearchDesktopApp extends Application {
             SearchOutcome outcome = task.getValue();
             latestReport = outcome.report();
             updateResults(config, latestReport);
-            statusLabel.setText("Search complete" + (outcome.runId() > 0 ? " · saved to local history as run #" + outcome.runId() : "")
-                    + (latestReport.errors().isEmpty() ? "" : " · " + latestReport.errors().size() + " unreadable file(s)"));
-            searchButton.setDisable(false);
-            searchButton.setText("Search files");
+            String completedText = latestReport.cancelled() ? "Search cancelled · showing completed results" : "Search complete";
+            statusLabel.setText(completedText + (outcome.runId() > 0 ? " · saved to local history as run #" + outcome.runId() : "")
+                    + errorSummary(config, latestReport));
+            finishSearchControls();
         });
         task.setOnFailed(event -> {
             Throwable error = task.getException();
             statusLabel.setText(error == null ? "Search failed." : "Search failed: " + error.getMessage());
-            searchButton.setDisable(false);
-            searchButton.setText("Search files");
+            finishSearchControls();
         });
         searchExecutor.submit(task);
+    }
+
+    private void cancelSearch() {
+        SearchControl control = activeSearchControl;
+        if (control == null || control.isCancellationRequested()) return;
+        cancelButton.setDisable(true);
+        cancelButton.setText("Stopping…");
+        statusLabel.setText("Cancellation requested; stopping active file tasks…");
+        control.cancel();
+    }
+
+    private void finishSearchControls() {
+        activeSearchControl = null;
+        searchButton.setDisable(false);
+        searchButton.setText("Search files");
+        cancelButton.setDisable(true);
+        cancelButton.setText("Cancel search");
+    }
+
+    private String errorSummary(SearchConfig config, SearchEngine.SearchReport report) {
+        if (report.errors().isEmpty()) return "";
+        var first = report.errors().get(0);
+        Path displayPath = first.file().startsWith(config.root()) ? config.root().relativize(first.file()) : first.file();
+        return " · " + report.errors().size() + " warning(s); " + displayPath + ": " + first.reason();
     }
 
     private Set<String> parseCsv(String text) {
@@ -420,6 +471,10 @@ public final class SearchDesktopApp extends Application {
         matchedValue.setText(Integer.toString(report.results().size()));
         occurrencesValue.setText(Long.toString(report.occurrences()));
         timeValue.setText(String.format(java.util.Locale.ROOT, "%.3f s", report.elapsedSeconds()));
+        scanDetailsLabel.setText(String.format(java.util.Locale.ROOT,
+                "SCAN DETAILS   ·   %,d lines   ·   %s read   ·   %,.1f files/s   ·   %.3f ms/file   ·   %d errors",
+                report.linesScanned(), formatBytes(report.bytesScanned()), report.filesPerSecond(),
+                report.averageFileSeconds() * 1_000, report.errorCount()));
         resultsTable.getItems().setAll(report.results());
         if (!report.results().isEmpty()) resultsTable.getSelectionModel().selectFirst();
         else lineList.getItems().clear();
@@ -433,6 +488,13 @@ public final class SearchDesktopApp extends Application {
 
     private String relativePath(SearchResult result) {
         return latestConfig == null ? result.file().toString() : latestConfig.root().relativize(result.file()).toString();
+    }
+
+    private String formatBytes(long bytes) {
+        if (bytes < 1_000) return bytes + " B";
+        if (bytes < 1_000_000) return String.format(java.util.Locale.ROOT, "%.2f kB", bytes / 1_000.0);
+        if (bytes < 1_000_000_000) return String.format(java.util.Locale.ROOT, "%.2f MB", bytes / 1_000_000.0);
+        return String.format(java.util.Locale.ROOT, "%.2f GB", bytes / 1_000_000_000.0);
     }
 
     private void loadHistory() {

@@ -21,8 +21,9 @@ public final class SearchHistoryRepository {
     public long save(SearchConfig config, SearchEngine.SearchReport report, int threads) throws SQLException {
         String runSql = """
                 INSERT INTO search_runs(root_path, query_text, case_sensitive, regex, thread_count,
-                                        files_scanned, files_matched, occurrences, elapsed_nanos)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        files_scanned, files_matched, occurrences, elapsed_nanos,
+                                        lines_scanned, bytes_scanned, file_processing_nanos, error_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection connection = database.openConnection()) {
             connection.setAutoCommit(false);
@@ -38,6 +39,10 @@ public final class SearchHistoryRepository {
                     statement.setInt(7, report.results().size());
                     statement.setLong(8, report.occurrences());
                     statement.setLong(9, report.elapsedNanos());
+                    statement.setLong(10, report.linesScanned());
+                    statement.setLong(11, report.bytesScanned());
+                    statement.setLong(12, report.totalFileProcessingNanos());
+                    statement.setInt(13, report.errorCount());
                     statement.executeUpdate();
                     try (ResultSet keys = statement.getGeneratedKeys()) {
                         if (!keys.next()) throw new SQLException("SQLite did not return a search run ID.");
@@ -85,7 +90,8 @@ public final class SearchHistoryRepository {
         if (limit < 1) throw new IllegalArgumentException("History limit must be at least 1.");
         String sql = """
                 SELECT id, created_at, query_text, thread_count, files_scanned, files_matched,
-                       occurrences, elapsed_nanos
+                       occurrences, elapsed_nanos, lines_scanned, bytes_scanned,
+                       file_processing_nanos, error_count
                 FROM search_runs
                 ORDER BY id DESC
                 LIMIT ?
@@ -98,7 +104,9 @@ public final class SearchHistoryRepository {
                     runs.add(new SearchRunSummary(
                             rows.getLong("id"), rows.getString("created_at"), rows.getString("query_text"),
                             rows.getInt("thread_count"), rows.getInt("files_scanned"), rows.getInt("files_matched"),
-                            rows.getLong("occurrences"), rows.getLong("elapsed_nanos") / 1_000_000_000.0));
+                            rows.getLong("occurrences"), rows.getLong("elapsed_nanos") / 1_000_000_000.0,
+                            rows.getLong("lines_scanned"), rows.getLong("bytes_scanned"),
+                            rows.getLong("file_processing_nanos"), rows.getInt("error_count")));
                 }
             }
         }

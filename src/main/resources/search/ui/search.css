@@ -58,6 +58,7 @@
     -fx-padding: 7px 14px 7px 4px;
 }
 .metric-value { -fx-text-fill: #244c85; -fx-font-family: "Georgia", serif; -fx-font-size: 22px; -fx-font-weight: 700; }
+.scan-details { -fx-text-fill: #647386; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 0 2px 2px 2px; }
 .field-block { -fx-min-width: 70px; }
 .text-field, .spinner {
     -fx-background-color: #fffefa;
@@ -85,6 +86,18 @@
 }
 .primary-button:hover { -fx-background-color: #203f69; }
 .primary-button:disabled { -fx-opacity: 0.62; }
+.cancel-button {
+    -fx-background-color: #fffefa;
+    -fx-background-radius: 2px;
+    -fx-border-color: #aab6c2;
+    -fx-border-radius: 2px;
+    -fx-text-fill: #44576c;
+    -fx-font-weight: 600;
+    -fx-padding: 9px 12px;
+    -fx-cursor: hand;
+}
+.cancel-button:hover { -fx-background-color: #edf1f5; }
+.cancel-button:disabled { -fx-opacity: 0.58; }
 .secondary-button {
     -fx-background-color: #f4f2ec;
     -fx-background-radius: 2px;
