@@ -16,6 +16,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -61,8 +62,7 @@ public final class SearchDesktopApp extends Application {
     private final CheckBox saveHistoryBox = new CheckBox("Save search history");
     private final Spinner<Integer> threadSpinner = new Spinner<>(1, 128, Math.max(1, Runtime.getRuntime().availableProcessors()));
     private final Button searchButton = new Button("Search files");
-    private final Button cancelButton = new Button("Cancel search");
-    private final Label statusLabel = new Label("Ready when you are.");
+    private final Label statusLabel = new Label();
     private final Label historyStatusLabel = new Label("History is stored locally in SQLite.");
     private final Label filesValue = new Label("—");
     private final Label matchedValue = new Label("—");
@@ -71,6 +71,7 @@ public final class SearchDesktopApp extends Application {
     private final Label scanDetailsLabel = new Label("Lines, bytes, throughput and file timing will appear after a search.");
     private final TableView<SearchResult> resultsTable = new TableView<>();
     private final ListView<SearchResult.LineMatch> lineList = new ListView<>();
+    private final Label resultsPlaceholder = new Label("Search results will appear here.");
     private final TableView<SearchRunSummary> historyTable = new TableView<>();
     private final StackPane pageHost = new StackPane();
     private final Button searchNav = new Button("Search");
@@ -123,13 +124,9 @@ public final class SearchDesktopApp extends Application {
         HBox navigation = new HBox(5, searchNav, historyNav);
         navigation.getStyleClass().add("top-navigation");
 
-        Label localStatus = new Label("ON THIS DEVICE");
-        localStatus.getStyleClass().add("local-status");
-        HBox right = new HBox(24, navigation, localStatus);
-        right.setAlignment(Pos.CENTER_RIGHT);
-        HBox top = new HBox(brand, right);
-        HBox.setHgrow(brand, Priority.ALWAYS);
-        top.setAlignment(Pos.CENTER_LEFT);
+        StackPane top = new StackPane(brand, navigation);
+        StackPane.setAlignment(brand, Pos.CENTER);
+        StackPane.setAlignment(navigation, Pos.CENTER_RIGHT);
         top.getStyleClass().add("top-bar");
         return top;
     }
@@ -142,8 +139,7 @@ public final class SearchDesktopApp extends Application {
                 buildSearchCard(),
                 buildMetrics(),
                 scanDetailsLabel,
-                buildResultsArea(),
-                statusLabel);
+                buildResultsArea());
         scanDetailsLabel.getStyleClass().add("scan-details");
         VBox.setVgrow(page.getChildren().get(4), Priority.ALWAYS);
         return page;
@@ -152,12 +148,17 @@ public final class SearchDesktopApp extends Application {
     private Node buildSearchCard() {
         VBox card = new VBox(10);
         card.getStyleClass().add("card");
-        card.getChildren().addAll(sectionHeading("Search", "Set a folder, query, and filters."));
+        HBox titleRow = new HBox(12, sectionHeading("Search", "Set a folder, query, and filters."), statusLabel);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(titleRow.getChildren().get(0), Priority.ALWAYS);
+        statusLabel.getStyleClass().add("status-text");
+        statusLabel.setMaxWidth(420);
+        card.getChildren().add(titleRow);
 
         HBox directoryRow = new HBox(10, fieldBlock("DIRECTORY", directoryField), browseButton());
         directoryRow.setAlignment(Pos.BOTTOM_LEFT);
         HBox.setHgrow(directoryRow.getChildren().get(0), Priority.ALWAYS);
-        HBox searchActions = new HBox(7, searchButton, cancelButton);
+        HBox searchActions = new HBox(searchButton);
         searchActions.setAlignment(Pos.BOTTOM_LEFT);
         HBox queryRow = new HBox(10, fieldBlock("QUERY", queryField), searchActions);
         queryRow.setAlignment(Pos.BOTTOM_LEFT);
@@ -166,19 +167,16 @@ public final class SearchDesktopApp extends Application {
         searchButton.getStyleClass().add("primary-button");
         searchButton.setPrefWidth(150);
         searchButton.setOnAction(event -> startSearch());
-        cancelButton.getStyleClass().add("cancel-button");
-        cancelButton.setPrefWidth(132);
-        cancelButton.setDisable(true);
-        cancelButton.setOnAction(event -> cancelSearch());
         queryField.setOnAction(event -> startSearch());
 
         threadSpinner.setEditable(true);
         threadSpinner.setPrefWidth(92);
+        threadSpinner.setTooltip(new Tooltip("Number of worker threads that can scan files in parallel."));
         HBox options = new HBox(17,
                 toggleBlock("MATCHING", ignoreCaseBox, regexBox),
                 fieldBlock("EXTENSIONS", extensionsField),
                 fieldBlock("EXCLUDE DIRECTORIES", exclusionsField),
-                fieldBlock("WORKERS", threadSpinner));
+                fieldBlock("THREADS", threadSpinner));
         options.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(options.getChildren().get(1), Priority.ALWAYS);
         HBox.setHgrow(options.getChildren().get(2), Priority.ALWAYS);
@@ -267,13 +265,13 @@ public final class SearchDesktopApp extends Application {
         matches.setCellValueFactory(cell -> new javafx.beans.property.ReadOnlyLongWrapper(cell.getValue().occurrences()));
         matches.setPrefWidth(100);
         resultsTable.getColumns().setAll(java.util.List.of(path, matches));
-        resultsTable.setPlaceholder(new Label("Search results will appear here."));
+        resultsTable.setPlaceholder(resultsPlaceholder);
         resultsTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, selected) -> showLines(selected));
         return resultsTable;
     }
 
     private ListView<SearchResult.LineMatch> buildLineList() {
-        lineList.setPlaceholder(new Label("Choose a matching file."));
+        lineList.setPlaceholder(new Label("Run a search to see matching lines."));
         lineList.setFixedCellSize(-1);
         lineList.setCellFactory(list -> new ListCell<>() {
             @Override protected void updateItem(SearchResult.LineMatch item, boolean empty) {
@@ -419,7 +417,6 @@ public final class SearchDesktopApp extends Application {
         activeSearchControl = control;
         searchButton.setDisable(true);
         searchButton.setText("Searching…");
-        cancelButton.setDisable(false);
         statusLabel.setText("Scanning files with " + workers + " worker thread(s)…");
         Task<SearchOutcome> task = new Task<>() {
             @Override protected SearchOutcome call() throws Exception {
@@ -433,9 +430,9 @@ public final class SearchDesktopApp extends Application {
             SearchOutcome outcome = task.getValue();
             latestReport = outcome.report();
             updateResults(config, latestReport);
-            String completedText = latestReport.cancelled() ? "Search cancelled · showing completed results" : "Search complete";
-            statusLabel.setText(completedText + (outcome.runId() > 0 ? " · saved to local history as run #" + outcome.runId() : "")
-                    + errorSummary(config, latestReport));
+            statusLabel.setText(latestReport.cancelled() ? "Search cancelled · showing completed results" : "");
+            if (!latestReport.errors().isEmpty()) statusLabel.setText("Search finished with "
+                    + latestReport.errors().size() + " unreadable file(s)" + errorSummary(config, latestReport));
             finishSearchControls();
         });
         task.setOnFailed(event -> {
@@ -446,21 +443,10 @@ public final class SearchDesktopApp extends Application {
         searchExecutor.submit(task);
     }
 
-    private void cancelSearch() {
-        SearchControl control = activeSearchControl;
-        if (control == null || control.isCancellationRequested()) return;
-        cancelButton.setDisable(true);
-        cancelButton.setText("Stopping…");
-        statusLabel.setText("Cancellation requested; stopping active file tasks…");
-        control.cancel();
-    }
-
     private void finishSearchControls() {
         activeSearchControl = null;
         searchButton.setDisable(false);
         searchButton.setText("Search files");
-        cancelButton.setDisable(true);
-        cancelButton.setText("Cancel search");
     }
 
     private String errorSummary(SearchConfig config, SearchEngine.SearchReport report) {
@@ -484,14 +470,25 @@ public final class SearchDesktopApp extends Application {
                 report.linesScanned(), formatBytes(report.bytesScanned()), report.filesPerSecond(),
                 report.averageFileSeconds() * 1_000, report.errorCount()));
         resultsTable.getItems().setAll(report.results());
-        if (!report.results().isEmpty()) resultsTable.getSelectionModel().selectFirst();
-        else lineList.getItems().clear();
+        if (!report.results().isEmpty()) {
+            resultsPlaceholder.setText("Search results will appear here.");
+            resultsTable.getSelectionModel().selectFirst();
+        } else {
+            resultsPlaceholder.setText("No files matched. Try a different spelling or enable Ignore case.");
+            lineList.getItems().clear();
+            lineList.setPlaceholder(new Label("No matching lines to display."));
+        }
         if (!report.errors().isEmpty()) statusLabel.setText("Search finished with " + report.errors().size() + " unreadable file(s).");
     }
 
     private void showLines(SearchResult result) {
         lineList.getItems().clear();
-        if (result != null) lineList.getItems().setAll(result.matches());
+        if (result != null) {
+            lineList.setPlaceholder(new Label("No matching lines to display."));
+            lineList.getItems().setAll(result.matches());
+        } else {
+            lineList.setPlaceholder(new Label("Select a matching file to view its lines."));
+        }
     }
 
     private String relativePath(SearchResult result) {

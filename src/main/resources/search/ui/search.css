@@ -34,13 +34,13 @@
 }
 .nav-button:hover { -fx-text-fill: white; -fx-background-color: #26384c; }
 .nav-button.active { -fx-text-fill: #ffffff; -fx-border-color: transparent transparent #9fc0ff transparent; }
-.local-status { -fx-text-fill: #aeb9c7; -fx-font-size: 9px; -fx-font-weight: 700; -fx-letter-spacing: 1px; }
 
 .page { -fx-padding: 17px 28px 11px 28px; }
 .page-heading .page-title { -fx-text-fill: #202b39; -fx-font-family: "Georgia", serif; -fx-font-size: 26px; -fx-font-weight: 700; }
 .page-heading .page-subtitle { -fx-text-fill: #6c7783; -fx-font-size: 12px; }
 .section-title { -fx-text-fill: #243347; -fx-font-family: "Georgia", serif; -fx-font-size: 15px; -fx-font-weight: 700; }
 .muted-text { -fx-text-fill: #78828b; -fx-font-size: 11px; }
+.status-text { -fx-text-fill: #647386; -fx-font-size: 10px; -fx-wrap-text: true; }
 .micro-label { -fx-text-fill: #647386; -fx-font-size: 9px; -fx-font-weight: 700; -fx-letter-spacing: 0.6px; }
 
 .card, .metric-card {
@@ -86,18 +86,6 @@
 }
 .primary-button:hover { -fx-background-color: #203f69; }
 .primary-button:disabled { -fx-opacity: 0.62; }
-.cancel-button {
-    -fx-background-color: #fffefa;
-    -fx-background-radius: 2px;
-    -fx-border-color: #aab6c2;
-    -fx-border-radius: 2px;
-    -fx-text-fill: #44576c;
-    -fx-font-weight: 600;
-    -fx-padding: 9px 12px;
-    -fx-cursor: hand;
-}
-.cancel-button:hover { -fx-background-color: #edf1f5; }
-.cancel-button:disabled { -fx-opacity: 0.58; }
 .secondary-button {
     -fx-background-color: #f4f2ec;
     -fx-background-radius: 2px;
@@ -137,4 +125,3 @@
     -fx-font-size: 11px;
 }
 .scroll-bar:vertical .thumb { -fx-background-color: #b9c3cd; -fx-background-radius: 2px; }
-.page > .label:last-child { -fx-padding: 0 0 0 2px; }
