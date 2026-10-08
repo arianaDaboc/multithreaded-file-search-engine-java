@@ -10,7 +10,7 @@
 .top-bar {
     -fx-background-color: #1d2b3b;
     -fx-padding: 0 34px;
-    -fx-min-height: 72px;
+    -fx-min-height: 64px;
     -fx-border-color: transparent transparent #344355 transparent;
     -fx-border-width: 0 0 1px 0;
 }
@@ -18,8 +18,8 @@
 .brand-symbol { -fx-min-width: 30px; -fx-min-height: 30px; -fx-max-width: 30px; -fx-max-height: 30px; }
 .brand-lens { -fx-fill: transparent; -fx-stroke: #b9d2ff; -fx-stroke-width: 1.8px; }
 .brand-handle { -fx-stroke: #b9d2ff; -fx-stroke-width: 1.8px; }
-.brand-copy .label:first-child { -fx-text-fill: #f4f2ec; -fx-font-family: "Georgia", serif; -fx-font-size: 21px; -fx-font-weight: 700; }
-.brand-copy .label:last-child { -fx-text-fill: #aeb9c7; -fx-font-size: 8px; -fx-font-weight: 700; -fx-letter-spacing: 1.2px; }
+.brand-name { -fx-text-fill: #f4f2ec; -fx-font-family: "Georgia", serif; -fx-font-size: 21px; -fx-font-weight: 700; }
+.brand-caption { -fx-text-fill: #bdc8d5; -fx-font-size: 8px; -fx-font-weight: 700; -fx-letter-spacing: 1.2px; }
 .top-navigation { -fx-alignment: center; }
 .nav-button {
     -fx-background-color: transparent;
@@ -36,7 +36,7 @@
 .nav-button.active { -fx-text-fill: #ffffff; -fx-border-color: transparent transparent #9fc0ff transparent; }
 .local-status { -fx-text-fill: #aeb9c7; -fx-font-size: 9px; -fx-font-weight: 700; -fx-letter-spacing: 1px; }
 
-.page { -fx-padding: 25px 34px 18px 34px; }
+.page { -fx-padding: 17px 28px 11px 28px; }
 .page-heading .page-title { -fx-text-fill: #202b39; -fx-font-family: "Georgia", serif; -fx-font-size: 26px; -fx-font-weight: 700; }
 .page-heading .page-subtitle { -fx-text-fill: #6c7783; -fx-font-size: 12px; }
 .section-title { -fx-text-fill: #243347; -fx-font-family: "Georgia", serif; -fx-font-size: 15px; -fx-font-weight: 700; }
@@ -49,13 +49,13 @@
     -fx-border-color: #d9d8d0;
     -fx-border-radius: 2px;
     -fx-border-width: 1px;
-    -fx-padding: 14px;
+    -fx-padding: 10px;
 }
 .metric-card {
     -fx-background-color: transparent;
     -fx-border-color: transparent #d3d5d7 transparent transparent;
     -fx-border-radius: 0;
-    -fx-padding: 7px 14px 7px 4px;
+    -fx-padding: 4px 12px 4px 4px;
 }
 .metric-value { -fx-text-fill: #244c85; -fx-font-family: "Georgia", serif; -fx-font-size: 22px; -fx-font-weight: 700; }
 .scan-details { -fx-text-fill: #647386; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 0 2px 2px 2px; }
@@ -66,7 +66,7 @@
     -fx-border-color: #cfd3d6;
     -fx-border-radius: 2px;
     -fx-border-width: 1px;
-    -fx-padding: 7px 9px;
+    -fx-padding: 5px 8px;
     -fx-text-fill: #263548;
     -fx-prompt-text-fill: #9ca5ac;
 }

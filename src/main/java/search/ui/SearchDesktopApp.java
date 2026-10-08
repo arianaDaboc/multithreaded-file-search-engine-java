@@ -18,6 +18,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -98,13 +99,20 @@ public final class SearchDesktopApp extends Application {
     }
 
     private Node buildTopBar() {
-        Circle lens = new Circle(7);
+        Circle lens = new Circle(10, 10, 6.5);
         lens.getStyleClass().add("brand-lens");
-        Line handle = new Line(5, 5, 14, 14);
+        Line handle = new Line(15, 15, 23, 23);
         handle.getStyleClass().add("brand-handle");
-        StackPane mark = new StackPane(lens, handle);
+        Pane mark = new Pane(lens, handle);
+        mark.setMinSize(30, 30);
+        mark.setPrefSize(30, 30);
+        mark.setMaxSize(30, 30);
         mark.getStyleClass().add("brand-symbol");
-        HBox brand = new HBox(10, mark, new VBox(1, new Label("needle"), new Label("LOCAL FILE SEARCH")));
+        Label brandName = new Label("needle");
+        brandName.getStyleClass().add("brand-name");
+        Label brandCaption = new Label("LOCAL FILE SEARCH");
+        brandCaption.getStyleClass().add("brand-caption");
+        HBox brand = new HBox(10, mark, new VBox(1, brandName, brandCaption));
         brand.getStyleClass().add("brand");
         brand.getChildren().get(1).getStyleClass().add("brand-copy");
 
@@ -127,7 +135,7 @@ public final class SearchDesktopApp extends Application {
     }
 
     private Node buildSearchPage() {
-        VBox page = new VBox(22);
+        VBox page = new VBox(14);
         page.getStyleClass().add("page");
         page.getChildren().addAll(
                 pageHeading("Search files", "Find text in a folder and review matching lines."),
@@ -142,7 +150,7 @@ public final class SearchDesktopApp extends Application {
     }
 
     private Node buildSearchCard() {
-        VBox card = new VBox(16);
+        VBox card = new VBox(10);
         card.getStyleClass().add("card");
         card.getChildren().addAll(sectionHeading("Search", "Set a folder, query, and filters."));
 
@@ -246,8 +254,8 @@ public final class SearchDesktopApp extends Application {
         area.getChildren().addAll(fileCard, lineCard);
         // Keep both result panes visible at typical laptop window heights.
         // Their tables/lists provide scrolling when the result set is longer.
-        area.setMinHeight(150);
-        area.setPrefHeight(220);
+        area.setMinHeight(125);
+        area.setPrefHeight(185);
         return area;
     }
 
